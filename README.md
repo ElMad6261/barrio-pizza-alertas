@@ -49,16 +49,31 @@ pytest
 
 - [x] Esqueleto del proyecto + FastAPI corriendo
 - [x] Endpoints definidos con datos de ejemplo (`/api/alertas`, `/api/proyeccion/...`)
-- [ ] Carga y validación de los 4 CSV
-- [ ] Conversión de formatos de compra a unidad base
-- [ ] Motor de proyección de consumo (tendencia + fallback a promedio ponderado)
+- [x] Carga y validación de los 4 CSV
+- [x] Conversión de formatos de compra a unidad base
+- [x] Motor de proyección de consumo (tendencia + fallback a promedio ponderado)
 - [ ] Cálculo de necesidad real y comparación contra la orden
 - [ ] Motor de alertas conectado a datos reales
 - [ ] Chat con los datos (DeepSeek)
 
 ## Supuestos
 
-_(se va completando a medida que se toman decisiones de diseño)_
+- Los CSV se leen con encoding `utf-8-sig` porque traen BOM (típico al exportar desde Excel/Google Sheets).
+- Un ingrediente que falta en `orden_compra_semana.csv` para una sucursal **no se trata como error**: es justamente la señal de "insumo olvidado" que el reto pide detectar como alerta.
+- Un ingrediente que aparece en `orden_compra_semana.csv` (o inventario/consumo) pero **no existe en `ingredientes.csv`** se marca como "ingrediente desconocido" — no se puede convertir a unidad base porque no hay factor de conversión, así que se excluye del cálculo de necesidad y se reporta aparte (ej. `aji_chombo` en Costa del Este).
+- Un ingrediente que falta en `inventario_actual.csv` sí se considera un problema real de datos, porque sin stock actual no se puede calcular la necesidad real.
+- Se valida que no existan valores negativos en stock, consumo o cantidad pedida.
+
+### Metodología de proyección
+
+Para cada sucursal-ingrediente, sobre las 6 semanas de histórico:
+
+1. **Detección de outliers dentro de la serie**: se usa el z-score modificado (basado en desviación absoluta respecto a la mediana), con umbral 3.5 — más robusto que el desvío estándar clásico para series de solo 6 puntos, porque un único valor extremo no infla la propia medida de dispersión de referencia. Si la serie es prácticamente constante, no se marca ningún outlier (no hay forma confiable de distinguirlo del ruido normal).
+2. **Ajuste de tendencia**: con los puntos no-atípicos, si quedan al menos 4 de las 6 semanas se ajusta una regresión lineal. Si el R² ≥ 0.5, se usa esa tendencia para proyectar la semana siguiente.
+3. **Fallback a promedio ponderado**: si no hay suficiente señal de tendencia (R² bajo o muy pocos puntos), se usa un promedio ponderado que le da más peso a las semanas recientes.
+4. Ninguna proyección puede dar un valor negativo (se acota a 0 como mínimo).
+
+Sobre los datos reales del reto: 3 de las 88 combinaciones muestran tendencia real (ej. harina en Costa del Este, R²=0.999), y el pico artificial de pepperoni en Marbella (semana 3) se detecta y excluye correctamente antes de proyectar.
 
 ## Cómo se conectaría a Odoo en producción
 
