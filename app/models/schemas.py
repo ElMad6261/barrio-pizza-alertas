@@ -53,3 +53,19 @@ class ResumenSemanal(BaseModel):
     insumos_olvidados: int
     ingredientes_desconocidos: int
     alertas: list[Alerta]
+
+
+class LineaPedidoCorregido(BaseModel):
+    sucursal: str
+    ingrediente: str
+    formato_compra: str
+    unidad_base: str
+    cantidad_formatos_original: float = Field(..., description="Lo que la sucursal pidió, en formatos")
+    cantidad_formatos_corregida: float = Field(..., description="Lo que debería pedir según la proyección, en formatos")
+    cambio: bool = Field(..., description="True si la cantidad corregida difiere de la original")
+
+
+class PedidoPorProveedor(BaseModel):
+    proveedor: str
+    lineas: list[LineaPedidoCorregido]
+    total_lineas_corregidas: int = Field(..., description="Cuántas líneas de este proveedor difieren de lo pedido")

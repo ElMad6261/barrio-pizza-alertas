@@ -10,7 +10,7 @@ por una llamada al API del ERP en vez de a los CSV.
 
 from fastapi import APIRouter, HTTPException
 
-from app.core.alertas import generar_alertas
+from app.core.alertas import calcular_necesidad_y_orden, generar_alertas
 from app.core.data_loader import (
     cargar_consumo_historico,
     cargar_ingredientes,
@@ -18,9 +18,10 @@ from app.core.data_loader import (
     cargar_orden,
     validar_datos,
 )
+from app.core.pedido_corregido import agrupar_por_proveedor, calcular_pedido_corregido
 from app.core.proyeccion import proyectar_consumo
 from app.core.unidades import construir_tabla_conversion
-from app.models.schemas import ProyeccionDetalle, ResumenSemanal
+from app.models.schemas import PedidoPorProveedor, ProyeccionDetalle, ResumenSemanal
 
 router = APIRouter()
 
@@ -54,6 +55,23 @@ def obtener_alertas_por_sucursal(sucursal: str):
     reporte_calidad = validar_datos(df_ingredientes, df_inventario, df_orden, df_consumo)
     resumen = generar_alertas(df_ingredientes, df_inventario, df_orden, df_consumo, reporte_calidad)
     return [a for a in resumen.alertas if a.sucursal == sucursal]
+
+
+@router.get("/pedido-corregido-por-proveedor", response_model=list[PedidoPorProveedor])
+def obtener_pedido_corregido_por_proveedor():
+    """
+    Devuelve la orden de compra corregida (redondeada a formatos
+    completos según la necesidad real), agrupada por proveedor, lista
+    para reenviarle a cada uno su parte directamente.
+    """
+    df_ingredientes, df_inventario, df_orden, df_consumo = _cargar_todo()
+    tabla_conversion = construir_tabla_conversion(df_ingredientes)
+
+    df_necesidad_y_orden = calcular_necesidad_y_orden(
+        df_ingredientes, df_inventario, df_orden, df_consumo
+    )
+    df_pedido_corregido = calcular_pedido_corregido(df_necesidad_y_orden, tabla_conversion)
+    return agrupar_por_proveedor(df_pedido_corregido)
 
 
 @router.get("/proyeccion/{sucursal}/{ingrediente_id}", response_model=ProyeccionDetalle)

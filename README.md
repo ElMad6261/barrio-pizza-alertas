@@ -22,6 +22,18 @@ barrio-pizza-alertas/
 └── requirements.txt
 ```
 
+## Endpoints disponibles
+
+| Endpoint | Qué devuelve |
+|---|---|
+| `GET /api/health` | Chequeo de que la API está viva |
+| `GET /api/alertas` | Todas las alertas de la semana, ordenadas por urgencia |
+| `GET /api/alertas/{sucursal}` | Alertas filtradas por una sucursal |
+| `GET /api/proyeccion/{sucursal}/{ingrediente_id}` | Detalle de una proyección puntual (para el "por qué" de una alerta) |
+| `GET /api/pedido-corregido-por-proveedor` | Orden corregida, agrupada por proveedor |
+
+Todos documentados e interactivos en `/docs` (Swagger).
+
 ## Cómo correrlo localmente
 
 ```bash
@@ -54,6 +66,7 @@ pytest
 - [x] Motor de proyección de consumo (tendencia + fallback a promedio ponderado)
 - [x] Cálculo de necesidad real y comparación contra la orden
 - [x] Motor de alertas conectado a datos reales (`/api/alertas`, `/api/alertas/{sucursal}`)
+- [x] Pedido corregido agrupado por proveedor (`/api/pedido-corregido-por-proveedor`)
 - [ ] Chat con los datos (DeepSeek)
 
 ## Supuestos
@@ -84,6 +97,14 @@ Sobre los datos reales del reto: 3 de las 88 combinaciones muestran tendencia re
 - Las alertas se devuelven ordenadas de mayor a menor cantidad, para que lo más urgente se vea primero.
 
 Con los datos reales del reto, el motor genera 5 alertas: 1 insumo olvidado (mozzarella en Brisas del Golf, ~178 kg), 1 riesgo de quiebre (harina en Costa del Este, ~150 kg de menos), 2 sobre-pedidos (cebolla en Brisas del Golf, albahaca en Via Argentina) y 1 ingrediente desconocido (aji_chombo en Costa del Este).
+
+### Pedido corregido por proveedor
+
+`GET /api/pedido-corregido-por-proveedor` propone la cantidad que cada sucursal debería pedir (necesidad real redondeada **hacia arriba** al formato completo más cercano — no se puede comprar medio saco) y agrupa el resultado por proveedor, para poder reenviarle a cada uno directamente su parte de la orden corregida.
+
+- Una línea con necesidad real de 0 no se incluye — no tiene sentido reenviarle al proveedor un pedido en cero.
+- Cada línea indica si la cantidad corregida difiere de la original (`cambio: true/false`), para que el frontend pueda resaltar solo lo que realmente cambió.
+- Con los datos del reto, esto agrupa correctamente en los 8 proveedores reales del catálogo (Molinos Central, Distrib. Bella Italia, AgroFresco, Verduras La Huerta, Importadora Istmo, Hongos del Valle, EmpaqueTodo, Deli Gourmet).
 
 ## Cómo se conectaría a Odoo en producción
 
