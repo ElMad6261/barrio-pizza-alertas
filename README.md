@@ -52,8 +52,8 @@ pytest
 - [x] Carga y validación de los 4 CSV
 - [x] Conversión de formatos de compra a unidad base
 - [x] Motor de proyección de consumo (tendencia + fallback a promedio ponderado)
-- [ ] Cálculo de necesidad real y comparación contra la orden
-- [ ] Motor de alertas conectado a datos reales
+- [x] Cálculo de necesidad real y comparación contra la orden
+- [x] Motor de alertas conectado a datos reales (`/api/alertas`, `/api/alertas/{sucursal}`)
 - [ ] Chat con los datos (DeepSeek)
 
 ## Supuestos
@@ -74,6 +74,16 @@ Para cada sucursal-ingrediente, sobre las 6 semanas de histórico:
 4. Ninguna proyección puede dar un valor negativo (se acota a 0 como mínimo).
 
 Sobre los datos reales del reto: 3 de las 88 combinaciones muestran tendencia real (ej. harina en Costa del Este, R²=0.999), y el pico artificial de pepperoni en Marbella (semana 3) se detecta y excluye correctamente antes de proyectar.
+
+### Motor de alertas
+
+- `necesidad_real = max(0, consumo_proyectado - inventario_actual)`. Se acota a un mínimo de 0: si ya sobra inventario, no tiene sentido una "necesidad negativa" — y evita que una sucursal con stock de sobra que no pide nada termine marcada como sobre-pedido sobre una orden que ni siquiera existe.
+- `delta = cantidad_pedida - necesidad_real`. Una diferencia menor a **un formato completo** del ingrediente se considera redondeo normal (no existe medio saco) y no genera alerta.
+- Un ingrediente sin pedido y con necesidad real por encima de la tolerancia se marca como **insumo olvidado**, distinto de un riesgo de quiebre genérico — la causa raíz es otra (nunca se pidió, vs. se pidió de menos).
+- Un ingrediente pedido que no existe en el catálogo (ver `aji_chombo`) no se puede convertir a unidad base, pero **sí genera su propia alerta visible** ("ingrediente desconocido") en vez de desaparecer silenciosamente del dashboard.
+- Las alertas se devuelven ordenadas de mayor a menor cantidad, para que lo más urgente se vea primero.
+
+Con los datos reales del reto, el motor genera 5 alertas: 1 insumo olvidado (mozzarella en Brisas del Golf, ~178 kg), 1 riesgo de quiebre (harina en Costa del Este, ~150 kg de menos), 2 sobre-pedidos (cebolla en Brisas del Golf, albahaca en Via Argentina) y 1 ingrediente desconocido (aji_chombo en Costa del Este).
 
 ## Cómo se conectaría a Odoo en producción
 

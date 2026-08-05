@@ -16,6 +16,7 @@ class TipoAlerta(str, Enum):
     RIESGO_QUIEBRE = "riesgo_quiebre"      # están pidiendo menos de lo necesario
     SOBRE_PEDIDO = "sobre_pedido"          # están pidiendo de más
     INSUMO_OLVIDADO = "insumo_olvidado"    # no aparece en la orden pero se proyecta consumo
+    INGREDIENTE_DESCONOCIDO = "ingrediente_desconocido"  # está en la orden pero no en el catálogo
     ANOMALIA = "anomalia"                  # (extra) outlier vs. otras sucursales
 
 
@@ -50,4 +51,5 @@ class ResumenSemanal(BaseModel):
     riesgo_quiebre: int
     sobre_pedido: int
     insumos_olvidados: int
+    ingredientes_desconocidos: int
     alertas: list[Alerta]
