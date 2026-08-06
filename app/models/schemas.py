@@ -69,3 +69,12 @@ class PedidoPorProveedor(BaseModel):
     proveedor: str
     lineas: list[LineaPedidoCorregido]
     total_lineas_corregidas: int = Field(..., description="Cuántas líneas de este proveedor difieren de lo pedido")
+
+
+class IngredienteInfo(BaseModel):
+    ingrediente_id: str
+    nombre: str
+    proveedor: str
+    unidad_base: str
+    formato_compra: str
+    es_perecedero: bool

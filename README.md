@@ -27,9 +27,12 @@ barrio-pizza-alertas/
 | Endpoint | Qué devuelve |
 |---|---|
 | `GET /api/health` | Chequeo de que la API está viva |
+| `GET /api/sucursales` | Las sucursales válidas (para dropdowns/filtros, sin hardcodear) |
+| `GET /api/proveedores` | Los proveedores del catálogo |
+| `GET /api/ingredientes` | Catálogo completo de ingredientes |
 | `GET /api/alertas` | Todas las alertas de la semana, ordenadas por urgencia |
-| `GET /api/alertas/{sucursal}` | Alertas filtradas por una sucursal |
-| `GET /api/proyeccion/{sucursal}/{ingrediente_id}` | Detalle de una proyección puntual (para el "por qué" de una alerta) |
+| `GET /api/alertas/{sucursal}` | Alertas filtradas por una sucursal (404 si la sucursal no existe) |
+| `GET /api/proyeccion/{sucursal}/{ingrediente_id}` | Detalle de una proyección puntual (404 si sucursal o ingrediente no existen) |
 | `GET /api/pedido-corregido-por-proveedor` | Orden corregida, agrupada por proveedor |
 
 Todos documentados e interactivos en `/docs` (Swagger).

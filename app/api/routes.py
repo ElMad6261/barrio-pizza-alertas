@@ -16,12 +16,14 @@ from app.core.data_loader import (
     cargar_ingredientes,
     cargar_inventario,
     cargar_orden,
+    listar_proveedores,
+    listar_sucursales,
     validar_datos,
 )
 from app.core.pedido_corregido import agrupar_por_proveedor, calcular_pedido_corregido
 from app.core.proyeccion import proyectar_consumo
 from app.core.unidades import construir_tabla_conversion
-from app.models.schemas import PedidoPorProveedor, ProyeccionDetalle, ResumenSemanal
+from app.models.schemas import IngredienteInfo, PedidoPorProveedor, ProyeccionDetalle, ResumenSemanal
 
 router = APIRouter()
 
@@ -40,6 +42,37 @@ def health_check():
     return {"status": "ok"}
 
 
+@router.get("/sucursales", response_model=list[str])
+def obtener_sucursales():
+    """Sucursales válidas, para poblar filtros/dropdowns sin hardcodear nada en el frontend."""
+    _, df_inventario, _, _ = _cargar_todo()
+    return listar_sucursales(df_inventario)
+
+
+@router.get("/proveedores", response_model=list[str])
+def obtener_proveedores():
+    """Proveedores del catálogo, útil para filtros del pedido corregido."""
+    df_ingredientes, _, _, _ = _cargar_todo()
+    return listar_proveedores(df_ingredientes)
+
+
+@router.get("/ingredientes", response_model=list[IngredienteInfo])
+def obtener_ingredientes():
+    """Catálogo completo de ingredientes, para dropdowns o búsquedas en el frontend."""
+    df_ingredientes, _, _, _ = _cargar_todo()
+    return [
+        IngredienteInfo(
+            ingrediente_id=fila["ingrediente_id"],
+            nombre=fila["nombre"],
+            proveedor=fila["proveedor"],
+            unidad_base=fila["unidad_base"],
+            formato_compra=fila["formato_compra"],
+            es_perecedero=bool(fila["es_perecedero"]),
+        )
+        for _, fila in df_ingredientes.sort_values("nombre").iterrows()
+    ]
+
+
 @router.get("/alertas", response_model=ResumenSemanal)
 def obtener_alertas():
     """Devuelve todas las alertas de la semana actual, ordenadas por urgencia."""
@@ -52,6 +85,14 @@ def obtener_alertas():
 def obtener_alertas_por_sucursal(sucursal: str):
     """Devuelve solo las alertas de una sucursal puntual."""
     df_ingredientes, df_inventario, df_orden, df_consumo = _cargar_todo()
+
+    sucursales_validas = listar_sucursales(df_inventario)
+    if sucursal not in sucursales_validas:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Sucursal '{sucursal}' no existe. Sucursales válidas: {sucursales_validas}",
+        )
+
     reporte_calidad = validar_datos(df_ingredientes, df_inventario, df_orden, df_consumo)
     resumen = generar_alertas(df_ingredientes, df_inventario, df_orden, df_consumo, reporte_calidad)
     return [a for a in resumen.alertas if a.sucursal == sucursal]
@@ -82,6 +123,13 @@ def obtener_proyeccion(sucursal: str, ingrediente_id: str):
     método se calculó. Útil para el "por qué" detrás de cada alerta.
     """
     df_ingredientes, df_inventario, df_orden, df_consumo = _cargar_todo()
+
+    sucursales_validas = listar_sucursales(df_inventario)
+    if sucursal not in sucursales_validas:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Sucursal '{sucursal}' no existe. Sucursales válidas: {sucursales_validas}",
+        )
 
     if ingrediente_id not in set(df_ingredientes["ingrediente_id"]):
         raise HTTPException(status_code=404, detail=f"Ingrediente '{ingrediente_id}' no existe en el catálogo.")

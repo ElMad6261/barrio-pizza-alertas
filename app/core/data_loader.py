@@ -90,6 +90,15 @@ def cargar_consumo_historico() -> pd.DataFrame:
     return _leer_csv("consumo_historico.csv", COLUMNAS_ESPERADAS["consumo"])
 
 
+def listar_sucursales(df_inventario: pd.DataFrame) -> list[str]:
+    """Sucursales válidas, derivadas de los datos (nunca hardcodeadas)."""
+    return sorted(df_inventario["sucursal"].unique().tolist())
+
+
+def listar_proveedores(df_ingredientes: pd.DataFrame) -> list[str]:
+    return sorted(df_ingredientes["proveedor"].unique().tolist())
+
+
 def validar_datos(
     df_ingredientes: pd.DataFrame,
     df_inventario: pd.DataFrame,

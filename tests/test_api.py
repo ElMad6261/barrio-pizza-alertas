@@ -34,10 +34,39 @@ def test_alertas_por_sucursal_filtra_correctamente():
     assert all(a["sucursal"] == "Brisas del Golf" for a in data)
 
 
-def test_alertas_por_sucursal_sin_resultados():
+def test_alertas_por_sucursal_sucursal_inexistente_devuelve_404():
     response = client.get("/api/alertas/Sucursal Inexistente")
+    assert response.status_code == 404
+    assert "Sucursal Inexistente" in response.json()["detail"]
+
+
+def test_sucursales_devuelve_las_4_reales():
+    response = client.get("/api/sucursales")
     assert response.status_code == 200
-    assert response.json() == []
+    assert response.json() == ["Brisas del Golf", "Costa del Este", "Marbella", "Via Argentina"]
+
+
+def test_proveedores_devuelve_los_8_reales():
+    response = client.get("/api/proveedores")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 8
+    assert data == sorted(data)  # alfabético
+    assert "Molinos Central" in data
+
+
+def test_ingredientes_devuelve_los_22_del_catalogo():
+    response = client.get("/api/ingredientes")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 22
+    assert all({"ingrediente_id", "nombre", "proveedor", "unidad_base", "formato_compra", "es_perecedero"} <= set(item) for item in data)
+
+
+def test_proyeccion_sucursal_inexistente_devuelve_404():
+    response = client.get("/api/proyeccion/Sucursal Inexistente/harina")
+    assert response.status_code == 404
+    assert "Sucursal Inexistente" in response.json()["detail"]
 
 
 def test_proyeccion_devuelve_detalle_real():
