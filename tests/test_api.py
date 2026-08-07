@@ -75,8 +75,46 @@ def test_proyeccion_devuelve_detalle_real():
     data = response.json()
     assert data["metodo"] == "tendencia"
     assert data["consumo_proyectado"] > 300
+    assert data["r2"] > 0.95
+    assert data["ingrediente_id"] == "harina"
+
+
+def test_proyeccion_detalle_incluye_historico_de_6_semanas():
+    response = client.get("/api/proyeccion/Costa del Este/harina")
+    data = response.json()
+    assert len(data["historico"]) == 6
+    assert [p["semana"] for p in data["historico"]] == [1, 2, 3, 4, 5, 6]
+    assert not any(p["es_outlier"] for p in data["historico"])  # sin outliers en esta serie
+
+
+def test_proyeccion_detalle_marca_el_outlier_en_el_historico():
+    response = client.get("/api/proyeccion/Marbella/pepperoni")
+    data = response.json()
+    punto_semana_3 = next(p for p in data["historico"] if p["semana"] == 3)
+    assert punto_semana_3["es_outlier"] is True
+    assert 3 in data["semanas_excluidas"]
 
 
 def test_proyeccion_ingrediente_inexistente_devuelve_404():
     response = client.get("/api/proyeccion/Costa del Este/ingrediente_falso")
+    assert response.status_code == 404
+
+
+def test_proyecciones_devuelve_las_88_combinaciones():
+    response = client.get("/api/proyecciones")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 88
+
+
+def test_proyecciones_filtra_por_sucursal():
+    response = client.get("/api/proyecciones?sucursal=Marbella")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 22
+    assert all(f["sucursal"] == "Marbella" for f in data)
+
+
+def test_proyecciones_sucursal_inexistente_devuelve_404():
+    response = client.get("/api/proyecciones?sucursal=Sucursal Inexistente")
     assert response.status_code == 404

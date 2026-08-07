@@ -10,7 +10,7 @@ por una llamada al API del ERP en vez de a los CSV.
 
 from fastapi import APIRouter, HTTPException
 
-from app.core.alertas import calcular_necesidad_y_orden, generar_alertas
+from app.core.alertas import calcular_necesidad_y_orden, construir_resumen_proyecciones, generar_alertas
 from app.core.data_loader import (
     cargar_consumo_historico,
     cargar_ingredientes,
@@ -23,7 +23,14 @@ from app.core.data_loader import (
 from app.core.pedido_corregido import agrupar_por_proveedor, calcular_pedido_corregido
 from app.core.proyeccion import proyectar_consumo
 from app.core.unidades import construir_tabla_conversion
-from app.models.schemas import IngredienteInfo, PedidoPorProveedor, ProyeccionDetalle, ResumenSemanal
+from app.models.schemas import (
+    IngredienteInfo,
+    PedidoPorProveedor,
+    ProyeccionDetalle,
+    ProyeccionResumen,
+    PuntoHistorico,
+    ResumenSemanal,
+)
 
 router = APIRouter()
 
@@ -115,12 +122,39 @@ def obtener_pedido_corregido_por_proveedor():
     return agrupar_por_proveedor(df_pedido_corregido)
 
 
+@router.get("/proyecciones", response_model=list[ProyeccionResumen])
+def obtener_proyecciones(sucursal: str | None = None):
+    """
+    Devuelve la proyección de las combinaciones sucursal-ingrediente (las
+    88 del catálogo, o solo las de una sucursal si se pasa ?sucursal=).
+    Pensado para poblar una tabla completa sin llamar 88 veces al
+    endpoint de detalle.
+    """
+    df_ingredientes, df_inventario, df_orden, df_consumo = _cargar_todo()
+    tabla_conversion = construir_tabla_conversion(df_ingredientes)
+    df = calcular_necesidad_y_orden(df_ingredientes, df_inventario, df_orden, df_consumo)
+
+    if sucursal is not None:
+        sucursales_validas = listar_sucursales(df_inventario)
+        if sucursal not in sucursales_validas:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Sucursal '{sucursal}' no existe. Sucursales válidas: {sucursales_validas}",
+            )
+        df = df[df["sucursal"] == sucursal]
+
+    filas = construir_resumen_proyecciones(df, tabla_conversion)
+    return [ProyeccionResumen(**f) for f in filas]
+
+
 @router.get("/proyeccion/{sucursal}/{ingrediente_id}", response_model=ProyeccionDetalle)
 def obtener_proyeccion(sucursal: str, ingrediente_id: str):
     """
     Devuelve el detalle completo de una proyección puntual: cuánto se
-    proyecta, cuánto hay en inventario, cuánto se pidió y por qué
-    método se calculó. Útil para el "por qué" detrás de cada alerta.
+    proyecta, cuánto hay en inventario, cuánto se pidió, por qué método
+    se calculó, la confianza (r2) y el histórico semana a semana con
+    las semanas excluidas marcadas — todo lo necesario para graficar
+    el "por qué" detrás de una alerta puntual.
     """
     df_ingredientes, df_inventario, df_orden, df_consumo = _cargar_todo()
 
@@ -149,6 +183,11 @@ def obtener_proyeccion(sucursal: str, ingrediente_id: str):
     valores = historico["consumo_unidad_base"].tolist()
     resultado = proyectar_consumo(semanas, valores)
 
+    puntos_historico = [
+        PuntoHistorico(semana=s, consumo=v, es_outlier=s in resultado.semanas_excluidas)
+        for s, v in sorted(zip(semanas, valores))
+    ]
+
     inv = df_inventario[
         (df_inventario["sucursal"] == sucursal) & (df_inventario["ingrediente_id"] == ingrediente_id)
     ]
@@ -165,11 +204,15 @@ def obtener_proyeccion(sucursal: str, ingrediente_id: str):
     return ProyeccionDetalle(
         sucursal=sucursal,
         ingrediente=info["nombre"],
+        ingrediente_id=ingrediente_id,
         consumo_proyectado=round(resultado.valor_proyectado, 1),
         inventario_actual=inventario_actual,
         necesidad_real=round(necesidad_real, 1),
         cantidad_pedida=round(cantidad_pedida, 1),
         unidad=info["unidad_base"],
         metodo=resultado.metodo,
+        r2=resultado.r2,
+        semanas_excluidas=resultado.semanas_excluidas,
         delta_vs_pedido=round(cantidad_pedida - necesidad_real, 1),
+        historico=puntos_historico,
     )

@@ -34,16 +34,33 @@ class Alerta(BaseModel):
     mensaje: str = Field(..., description="Texto legible listo para mostrar en el dashboard")
 
 
-class ProyeccionDetalle(BaseModel):
+class PuntoHistorico(BaseModel):
+    semana: int
+    consumo: float
+    es_outlier: bool = Field(..., description="True si esta semana se excluyó del ajuste de tendencia")
+
+
+class ProyeccionResumen(BaseModel):
+    """Fila liviana para una tabla con todas las combinaciones sucursal-ingrediente."""
+
     sucursal: str
     ingrediente: str
+    ingrediente_id: str
     consumo_proyectado: float
     inventario_actual: float
     necesidad_real: float
     cantidad_pedida: float
     unidad: str
     metodo: MetodoProyeccion
+    r2: Optional[float] = Field(None, description="Solo aplica si hubo suficientes puntos para ajustar una tendencia")
+    semanas_excluidas: list[int] = Field(default_factory=list)
     delta_vs_pedido: float
+
+
+class ProyeccionDetalle(ProyeccionResumen):
+    """Mismo contenido que ProyeccionResumen, más el histórico para graficar."""
+
+    historico: list[PuntoHistorico]
 
 
 class ResumenSemanal(BaseModel):

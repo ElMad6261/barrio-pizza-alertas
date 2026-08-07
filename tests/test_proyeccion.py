@@ -69,6 +69,16 @@ def test_proyeccion_nunca_da_valores_negativos():
     assert resultado.valor_proyectado >= 0.0
 
 
+def test_r2_nunca_es_negative_zero():
+    # Caso real: Marbella/aceite_oliva da un r2 negativo minúsculo que
+    # redondeado quedaba en -0.0 en vez de 0.0.
+    semanas = [1, 2, 3, 4, 5, 6]
+    valores = [20.0, 21.0, 19.0, 22.0, 20.0, 21.0]
+    resultado = proyectar_consumo(semanas, valores)
+    if resultado.r2 is not None:
+        assert str(resultado.r2) != "-0.0"
+
+
 def test_proyectar_todas_las_combinaciones_cubre_los_88_combos():
     df_consumo = cargar_consumo_historico()
     resultado = proyectar_todas_las_combinaciones(df_consumo)

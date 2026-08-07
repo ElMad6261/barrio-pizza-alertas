@@ -62,6 +62,13 @@ def _promedio_ponderado(semanas: np.ndarray, valores: np.ndarray) -> float:
     return float(np.average(valores, weights=pesos))
 
 
+def _redondear_r2(r2: float) -> float:
+    # round() puede devolver -0.0 cuando r2 es un negativo minúsculo
+    # (peor que la media, pero por muy poco) — se normaliza a 0.0 para
+    # que el frontend no reciba un signo negativo sin sentido visual.
+    return round(r2, 3) + 0.0
+
+
 def proyectar_consumo(semanas: list[int], valores: list[float]) -> ResultadoProyeccion:
     """
     semanas: números de semana, ej. [1, 2, 3, 4, 5, 6]
@@ -100,7 +107,7 @@ def proyectar_consumo(semanas: list[int], valores: list[float]) -> ResultadoProy
             return ResultadoProyeccion(
                 valor_proyectado=max(0.0, float(valor_proyectado)),
                 metodo=MetodoProyeccion.TENDENCIA,
-                r2=round(r2, 3),
+                r2=_redondear_r2(r2),
                 semanas_excluidas=semanas_excluidas,
             )
 
@@ -108,7 +115,7 @@ def proyectar_consumo(semanas: list[int], valores: list[float]) -> ResultadoProy
     return ResultadoProyeccion(
         valor_proyectado=max(0.0, valor_proyectado),
         metodo=MetodoProyeccion.PROMEDIO_PONDERADO,
-        r2=round(r2, 3) if r2 is not None else None,
+        r2=_redondear_r2(r2) if r2 is not None else None,
         semanas_excluidas=semanas_excluidas,
     )
 

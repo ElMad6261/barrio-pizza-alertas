@@ -207,6 +207,35 @@ def generar_alertas_calidad_datos(
     return alertas
 
 
+def construir_resumen_proyecciones(df: pd.DataFrame, tabla_conversion: dict[str, dict]) -> list[dict]:
+    """
+    A partir del DataFrame de calcular_necesidad_y_orden (que ya trae
+    consumo_proyectado, metodo, r2 y semanas_excluidas de la etapa de
+    proyección), arma las filas listas para ProyeccionResumen — sin el
+    histórico, para mantener liviana la respuesta de la tabla completa.
+    """
+    filas = []
+    for _, fila in df.iterrows():
+        info = tabla_conversion[fila["ingrediente_id"]]
+        filas.append(
+            {
+                "sucursal": fila["sucursal"],
+                "ingrediente": info["nombre"],
+                "ingrediente_id": fila["ingrediente_id"],
+                "consumo_proyectado": round(fila["consumo_proyectado"], 1),
+                "inventario_actual": round(fila["inventario_actual"], 1),
+                "necesidad_real": round(fila["necesidad_real"], 1),
+                "cantidad_pedida": round(fila["cantidad_pedida"], 1),
+                "unidad": info["unidad_base"],
+                "metodo": fila["metodo"],
+                "r2": fila["r2"] if pd.notna(fila["r2"]) else None,
+                "semanas_excluidas": fila["semanas_excluidas"],
+                "delta_vs_pedido": round(fila["cantidad_pedida"] - fila["necesidad_real"], 1),
+            }
+        )
+    return filas
+
+
 def generar_alertas(
     df_ingredientes: pd.DataFrame,
     df_inventario: pd.DataFrame,

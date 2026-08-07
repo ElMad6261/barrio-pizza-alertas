@@ -32,7 +32,8 @@ barrio-pizza-alertas/
 | `GET /api/ingredientes` | Catálogo completo de ingredientes |
 | `GET /api/alertas` | Todas las alertas de la semana, ordenadas por urgencia |
 | `GET /api/alertas/{sucursal}` | Alertas filtradas por una sucursal (404 si la sucursal no existe) |
-| `GET /api/proyeccion/{sucursal}/{ingrediente_id}` | Detalle de una proyección puntual (404 si sucursal o ingrediente no existen) |
+| `GET /api/proyecciones` | Tabla completa (o filtrada con `?sucursal=`) con proyección, r2, semanas excluidas y necesidad de cada combinación |
+| `GET /api/proyeccion/{sucursal}/{ingrediente_id}` | Detalle de una proyección puntual, con el histórico de 6 semanas marcando outliers (para graficar) |
 | `GET /api/pedido-corregido-por-proveedor` | Orden corregida, agrupada por proveedor |
 
 Todos documentados e interactivos en `/docs` (Swagger).
