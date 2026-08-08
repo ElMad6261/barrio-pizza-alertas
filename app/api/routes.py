@@ -11,6 +11,7 @@ por una llamada al API del ERP en vez de a los CSV.
 from fastapi import APIRouter, HTTPException
 
 from app.core.alertas import calcular_necesidad_y_orden, construir_resumen_proyecciones, generar_alertas
+from app.core.chat import ChatNoDisponibleError, responder_pregunta
 from app.core.data_loader import (
     cargar_consumo_historico,
     cargar_ingredientes,
@@ -26,10 +27,12 @@ from app.core.unidades import construir_tabla_conversion
 from app.models.schemas import (
     IngredienteInfo,
     PedidoPorProveedor,
+    PreguntaChat,
     ProyeccionDetalle,
     ProyeccionResumen,
     PuntoHistorico,
     ResumenSemanal,
+    RespuestaChat,
 )
 
 router = APIRouter()
@@ -216,3 +219,18 @@ def obtener_proyeccion(sucursal: str, ingrediente_id: str):
         delta_vs_pedido=round(cantidad_pedida - necesidad_real, 1),
         historico=puntos_historico,
     )
+
+
+@router.post("/chat", response_model=RespuestaChat)
+def chat_con_los_datos(cuerpo: PreguntaChat):
+    """
+    Responde preguntas en español sobre las alertas, proyecciones y el
+    pedido corregido de la semana actual. DeepSeek solo interpreta los
+    datos que ya calculó este backend — no hace ningún cálculo propio,
+    para que nunca contradiga lo que muestra el resto del dashboard.
+    """
+    try:
+        respuesta = responder_pregunta(cuerpo.pregunta)
+    except ChatNoDisponibleError as error:
+        raise HTTPException(status_code=503, detail=str(error))
+    return RespuestaChat(respuesta=respuesta)

@@ -35,6 +35,20 @@ barrio-pizza-alertas/
 | `GET /api/proyecciones` | Tabla completa (o filtrada con `?sucursal=`) con proyección, r2, semanas excluidas y necesidad de cada combinación |
 | `GET /api/proyeccion/{sucursal}/{ingrediente_id}` | Detalle de una proyección puntual, con el histórico de 6 semanas marcando outliers (para graficar) |
 | `GET /api/pedido-corregido-por-proveedor` | Orden corregida, agrupada por proveedor |
+| `POST /api/chat` | Chat con los datos: `{"pregunta": "..."}` → `{"respuesta": "..."}` |
+
+### Chat con los datos (DeepSeek)
+
+DeepSeek **no hace ningún cálculo**: el backend arma un contexto en JSON con las alertas, proyecciones y pedido corregido ya calculados (misma fuente de verdad que el resto del dashboard) y se lo manda como system prompt junto con la pregunta. El modelo solo interpreta y traduce a lenguaje natural — así nunca puede contradecir un número que ya se ve en otra pantalla.
+
+Para activarlo:
+
+```bash
+cp .env.example .env
+# editar .env y poner tu DEEPSEEK_API_KEY real
+```
+
+Sin la variable configurada, `/api/chat` devuelve `503` con un mensaje explícito en vez de romper.
 
 Todos documentados e interactivos en `/docs` (Swagger).
 
@@ -71,7 +85,7 @@ pytest
 - [x] Cálculo de necesidad real y comparación contra la orden
 - [x] Motor de alertas conectado a datos reales (`/api/alertas`, `/api/alertas/{sucursal}`)
 - [x] Pedido corregido agrupado por proveedor (`/api/pedido-corregido-por-proveedor`)
-- [ ] Chat con los datos (DeepSeek)
+- [x] Chat con los datos (DeepSeek)
 
 ## Supuestos
 

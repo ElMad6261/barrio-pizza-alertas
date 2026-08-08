@@ -95,3 +95,11 @@ class IngredienteInfo(BaseModel):
     unidad_base: str
     formato_compra: str
     es_perecedero: bool
+
+
+class PreguntaChat(BaseModel):
+    pregunta: str = Field(..., min_length=1, max_length=500, description="Pregunta en español sobre los datos de la semana")
+
+
+class RespuestaChat(BaseModel):
+    respuesta: str
